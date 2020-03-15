@@ -5,6 +5,10 @@ import javax.naming.SizeLimitExceededException
 import net.fusejna.ErrorCodes._
 import api._, std._
 
+// https://github.com/SerCeMan/jnr-fuse
+// https://github.com/SerCeMan/jnr-fuse#projects-using-jnr-fuse
+// https://github.com/puniverse/javafs
+// https://github.com/cryptomator/fuse-nio-adapter
 package object fuse {
   type DirectoryFiller   = net.fusejna.DirectoryFiller
   type FileInfo          = net.fusejna.StructFuseFileInfo.FileInfoWrapper

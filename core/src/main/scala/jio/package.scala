@@ -8,10 +8,10 @@ import jnf.{ attribute => jnfa }
 import jnf.Files
 import jnfa.PosixFilePermission._
 import javax.naming.SizeLimitExceededException
-import scala.collection.convert.{ DecorateAsScala, DecorateAsJava }
+import scala.collection.convert.{ AsJavaExtensions, AsScalaExtensions }
 import api._, attributes._
 
-package object jio extends DecorateAsScala with DecorateAsJava with Alias {
+package object jio extends AsJavaExtensions with AsScalaExtensions with Alias {
   val UTF8          = java.nio.charset.StandardCharsets.UTF_8
   val UnixUserClass = Class.forName("sun.nio.fs.UnixUserPrincipals$User")
   val UidMethod     = UnixUserClass.getDeclaredMethod("uid").tap(_.setAccessible(true))

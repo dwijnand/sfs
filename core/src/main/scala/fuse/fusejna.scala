@@ -20,12 +20,12 @@ trait FuseFs extends FuseFilesystem {
     this
   }
 
-  def fillDir(df: DirectoryFiller)(xs: Traversable[Any]): Unit = xs.foreach(x => df.add("" + x))
+  def fillDir(df: DirectoryFiller)(xs: Iterable[Any]): Unit = xs.foreach(x => df.add("" + x))
 
   def mount(mountPoint: Path): this.type           = doMount(mountPoint.toFile, blocking = false)
   def mountForeground(mountPoint: Path): this.type = doMount(mountPoint.toFile, blocking = true)
 
-  def fuseContext(): FuseContext  = super.getFuseContext
+  def fuseContext: FuseContext    = super.getFuseContext
   def getOptions(): Array[String] = options.toArray
 
   def options: Vector[String] = fuse.defaultOptions

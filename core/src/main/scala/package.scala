@@ -12,7 +12,7 @@ package object sfs {
   // 26    x-c
   // ...
   def statsBy[A, B](xs: Seq[A])(f: A => B): Unit = {
-    val counts = xs.groupBy(f).mapValues(_.size)
+    val counts = xs.groupBy(f).view.mapValues(_.size)
     counts.toVector.sortBy(-_._2).map { case (k, n) => "%-5s %s".format(n, k) }.foreach(println)
   }
 

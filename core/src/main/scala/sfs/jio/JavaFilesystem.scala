@@ -1,40 +1,7 @@
 package sfs
 package jio
 
-import java.nio.file._
-import javax.naming.SizeLimitExceededException
-import api._, fuse._
-
-trait JavaEffects {
-  type M[_]
-
-  def success[A](body: => A): M[A] = Try(body).fold(error, run)
-
-  def error[A]: Throwable => M[A]
-
-  protected def run[A]: A => M[A]
-}
-
-class FuseEffects extends JavaEffects {
-  type M[A] = Result[A]
-
-  def run[A]: A => Result[A] = Success[A]
-
-  def error[A]: Throwable => Result[A] = { t =>
-    // log(t)
-    t match{
-      case _: FileAlreadyExistsException    => AlreadyExists
-      case _: NoSuchFileException           => DoesNotExist
-      case _: IllegalArgumentException      => NotValid
-      case _: UnsupportedOperationException => NotImplemented
-      case _: DirectoryNotEmptyException    => NotEmpty
-      case _: SizeLimitExceededException    => TooBig
-      case _: AccessDeniedException         => AccessDenied
-      case _: jio.IOException               => InputOutputError
-      case _                                => InputOutputError
-    }
-  }
-}
+import api._
 
 class JavaFilesystem[E <: JavaEffects](root: Path, val effects: E) extends Filesystem {
   type M[A] = effects.M[A]

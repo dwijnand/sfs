@@ -1,7 +1,7 @@
 package sfs
 package api
 
-trait Filesystem {
+trait Filesystem { fs =>
   /** Allows for effects */
   type M[_]
 
@@ -9,15 +9,15 @@ trait Filesystem {
    *  the root to a particular node in the tree. */
   type Path
 
-  /** A Name is a single directed edge of the graph. */
+  /** A Name is a single directed edge of the graph. */ // e.g. String forall(ch != '/')
   type Name
 
   /** A key of some kind, only meaningful within this filesystem,
    *  which uniquely pinpoints the entity to which a path resolves.
-   *  It is decoupled from the name. */
+   *  It is decoupled from the name. */ // e.g. 64-bit inode long
   type Key
 
-  /** Some means of performing I/O on a virtualized file. */
+  /** Some means of performing I/O on a virtualized file. */ // e.g. Array[Byte]
   type IO
 
   /** There are a number of ways we could arrange the "primitives"
@@ -38,12 +38,21 @@ trait Filesystem {
   val isFile: Data =?> Unit = { case File(_) => }
   val isLink: Data =?> Unit = { case Link(_) => }
   val isDir : Data =?> Unit = { case Dir (_) => }
-}
 
-trait UnixLikeFilesystem extends Filesystem {
-  /** These could have stronger types - this is the minimal example. */
-  type Path = String
-  type Name = String       // assert(name forall (ch != '/'))
-  type Key  = Long         // 64-bit inode
-  type IO   = Array[Byte]  // for maximum simplicity, but even unix isn't this simple
+  // Experiment with transforming parts of the file system, in this case the Path
+  def withMappedPath[T](decPath: T => Path, encPath: Path => T)(implicit F: Functor[M]) = new Filesystem {
+    type M[A] = fs.M[A]
+    type Path = T
+    type Name = fs.Name
+    type Key  = fs.Key
+    type IO   = fs.IO
+
+    def resolve(path: Path): Key        = fs.resolve(decPath(path))
+    def metadata(key: Key): M[Metadata] = fs.metadata(key)
+    def lookup(key: Key): M[Data]       = fs.lookup(key).map {
+      case fs.Link(path)    => Link(encPath(path))
+      case fs.File(io)      => File(io)
+      case fs.Dir(children) => Dir(children)
+    }
+  }
 }

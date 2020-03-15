@@ -3,7 +3,7 @@ package sfs
 import java.nio.file._
 import javax.naming.SizeLimitExceededException
 import net.fusejna.ErrorCodes._
-import api._, attributes._
+import api._
 
 package object fuse {
   type DirectoryFiller   = net.fusejna.DirectoryFiller
@@ -64,9 +64,9 @@ package object fuse {
 
   implicit class NodeTypeOps(val nodeType: NodeType) extends AnyVal {
     def asFuse = nodeType match {
-      case File => Node.File
-      case Dir  => Node.Dir
-      case Link => Node.Link
+      case NodeType.File => Node.File
+      case NodeType.Dir  => Node.Dir
+      case NodeType.Link => Node.Link
     }
   }
 }

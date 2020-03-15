@@ -5,9 +5,9 @@ import java.nio.{ file => jnf }
 import jnf.{ attribute => jnfa }
 import jnf.{ Files => F }
 import jnfa.PosixFilePermissions.asFileAttribute
-import api._, attributes._
+import api._, Attributes._
 
-trait Pathish[Rep] {
+trait Pathish[Rep] extends Any {
   def path: Path
   def asRep(p: Path): Rep
 
@@ -37,14 +37,14 @@ trait Pathish[Rep] {
 
   def metadata: Metadata = {
     val metadata = Metadata(Atime(atime), Mtime(mtime), UnixPerms(toUnixMask(perms)), Uid(uid))
-         if (isFile) metadata.set(File).set(Size(path.size)).set(BlockCount(blockCount))
-    else if (isDir)  metadata.set(Dir)
-    else if (isLink) metadata.set(Link)
+         if (isFile) metadata.set(NodeType.File).set(Size(path.size)).set(BlockCount(blockCount))
+    else if (isDir)  metadata.set(NodeType.Dir)
+    else if (isLink) metadata.set(NodeType.Link)
     else metadata
   }
 
   def /(name: String): Rep      = asRep(path.resolve(name))
-  def ls: Vector[Rep]           = if (isDir) Using.resource(F.list(path))(_.toVector.map(asRep)) else Vector()
+  def ls: Vector[Rep]           = if (isDir) Using.resource(F.list(path))(_.map(asRep).toScala(Vector)) else Vector()
   def mkdir(bits: Long): Rep    = asRep(path.createDirectory(asFileAttribute(bitsAsPermissions(bits))))
   def mkfile(bits: Long): Rep   = asRep(path.createFile(asFileAttribute(bitsAsPermissions(bits))))
   def mklink(target: Path): Rep = asRep(path.createSymbolicLink(target))

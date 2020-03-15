@@ -8,10 +8,10 @@ import jnf.{ attribute => jnfa }
 import jnf.Files
 import jnfa.PosixFilePermission._
 import javax.naming.SizeLimitExceededException
-import scala.collection.convert.{ AsJavaExtensions, AsScalaExtensions }
-import api._, attributes._
+import scala.collection.convert.{ AsJavaExtensions, AsScalaExtensions, StreamExtensions }
+import api._
 
-package object jio extends AsJavaExtensions with AsScalaExtensions with Alias {
+package object jio extends AsJavaExtensions with AsScalaExtensions with StreamExtensions with Alias {
   val UTF8          = java.nio.charset.StandardCharsets.UTF_8
   val UnixUserClass = Class.forName("sun.nio.fs.UnixUserPrincipals$User")
   val UidMethod     = UnixUserClass.getDeclaredMethod("uid").tap(_.setAccessible(true))
@@ -23,23 +23,19 @@ package object jio extends AsJavaExtensions with AsScalaExtensions with Alias {
   def jSet[A](xs: A*): jSet[A]           = new ju.HashSet[A].tap(x => xs.foreach(x.add))
   def path: String => Path               = jnf.Paths.get(_)
 
-  implicit class JioFilesInstanceOps(path: Path) extends JioFilesInstance(path)
+  implicit def pathOps(path: Path): PathOps = new PathOps(path)
 
-  implicit class StreamOps[A](val xs: jStream[A]) extends AnyVal {
-    def toVector: Vector[A] = Vector.newBuilder[A].tap(b => xs.iterator.asScala.foreach(b += _)).result
-  }
-
-  implicit class ClassOps[A](val c: Class[A]) {
+  implicit class ClassOps[A](val c: Class[A]) extends AnyVal {
     def shortName: String = c.getName.stripSuffix("$").split("[.]").last.split("[$]").last
   }
 
-  implicit class FileOps(val f: File) extends Pathish[File] {
+  implicit class FilePathish(val f: File) extends AnyVal with Pathish[File] {
     def path: Path     = f.toPath
     def asRep(p: Path) = p.toFile
     def appending[A](g: FileOutputStream => A): A = Using.resource(new FileOutputStream(f, true))(g)
   }
 
-  implicit class PathOps(val path: Path) extends Pathish[Path] {
+  implicit class PathPathish(val path: Path) extends AnyVal with Pathish[Path] {
     def asRep(p: Path)      = p
     def append(other: Path) = jio.path(path.to_s + other.to_s)
 
@@ -67,17 +63,15 @@ package object jio extends AsJavaExtensions with AsScalaExtensions with Alias {
   }
 
   implicit class FileChannelOps(val c: FileChannel) extends AnyVal {
-    def appendNullBytes(at: Long, amount: Int): Unit = {
-      val nullBytes = Array.fill(amount)(0.toByte)
-      c.write(ByteBuffer.wrap(nullBytes), at)
-    }
+    def appendNullBytes(at: Long, amount: Int): Unit =
+      c.write(ByteBuffer.wrap(Array.fill(amount)(0.toByte)), at)
   }
 
   implicit class UnixPermsOps(val perms: UnixPerms) extends AnyVal {
     def java: Set[PosixFilePermission] = perms.bits.map(UnixToJava)
   }
 
-  def toUnixMask(perms: jFilePermissions) = perms.asScala.map(JavaToUnix).foldLeft(0L)(_ | _)
+  def toUnixMask(perms: jFilePermissions): Long = perms.asScala.map(JavaToUnix).foldLeft(0L)(_ | _)
 
   lazy val UnixToJava = UnixPerms.Bits.zip(JavaBits).toMap
   lazy val JavaToUnix = JavaBits.zip(UnixPerms.Bits).toMap
@@ -85,14 +79,14 @@ package object jio extends AsJavaExtensions with AsScalaExtensions with Alias {
   lazy val JavaBits = Vector[PosixFilePermission](
     OWNER_READ, OWNER_WRITE, OWNER_EXECUTE,
     GROUP_READ, GROUP_WRITE, GROUP_EXECUTE,
-    OTHERS_READ, OTHERS_WRITE, OTHERS_EXECUTE
+    OTHERS_READ, OTHERS_WRITE, OTHERS_EXECUTE,
   )
 
   def bitsAsPermissions(bits: Long): jFilePermissions = {
     Set(
       (1 << 8, OWNER_READ), (1 << 7, OWNER_WRITE), (1 << 6, OWNER_EXECUTE),
       (1 << 5, GROUP_READ), (1 << 4, GROUP_WRITE), (1 << 3, GROUP_EXECUTE),
-      (1 << 2, OTHERS_READ), (1 << 1, OTHERS_WRITE), (1 << 0, OTHERS_EXECUTE)
+      (1 << 2, OTHERS_READ), (1 << 1, OTHERS_WRITE), (1 << 0, OTHERS_EXECUTE),
     ).foldLeft(Set.empty[PosixFilePermission]) { case (result, (bit, permission)) =>
       if ((bits & bit) == 0) result else result + permission
     }.asJava

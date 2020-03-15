@@ -12,36 +12,6 @@ package api
  * - think twice before writing the `extends` or `override` keyword.
  */
 
-/** Key is an attribute key: a Metadata map key which carries
- *  both the type of the corresponding value, and a value to
- *  provide when there is no value in the map. This as opposed
- *  to wrapping everything in sight in Option. */
-final class Key[A](description: String) extends ShowSelf { def to_s = description }
-
-/** Attribute is a dependently typed key/value pair. */
-trait Attribute extends Any with ShowDirect {
-  type Type
-  def key: Key[Type]
-  def value: Type
-
-  def hasSameKey(that: Attribute)      = hasKey(that.key)
-  def hasKey[A](implicit that: Key[A]) = key == that
-
-  def pair = key -> value
-  def to_s = s"$key: $value"
-}
-
-object Attribute {
-  type Of[A] = Attribute { type Type = A }
-
-  implicit def apply[A](value: A)(implicit key: Key[A]): Of[A] = AttributeOf[A](key, value)
-  def unapply(x: Attribute): Some[x.Type]                      = Some(x.value)
-
-  /** The simple implementation of Attribute, which ties the knot between the
-   *  user-facing type parameter and the type member which couples key and value. */
-  private case class AttributeOf[A](key: Key[A], value: A) extends Attribute with ShowSelf { type Type = A }
-}
-
 /** A Metadata map, holding any number of well typed Attributes. A typed value can be obtained for any key. */
 final class Metadata(val attributes: Vector[Attribute]) extends ShowSelf { md =>
   private val untypedMap                         = attributes.foldLeft(Map[Key[_], Any]())(_ + _.pair)

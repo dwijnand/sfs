@@ -1,4 +1,5 @@
 package sfs
+package api
 
 final case class ExecResult(
     argv: Vector[String],

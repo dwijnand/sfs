@@ -1,7 +1,7 @@
 package sfs
 package fuse
 
-import jio._
+import api._, jio._
 
 /** Widening access so we don't have to use inheritance everywhere. */
 trait FuseFs extends FuseFilesystem {

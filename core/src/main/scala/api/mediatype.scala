@@ -29,15 +29,16 @@ final case class MediaType(`type`: String, subtype: String, attrs: Map[String, S
   def charset = attrs.getOrElse("charset", "<none>")
   override def toString = s"%s/%s".format(`type`, subtype)
 }
+
 object MediaType {
   val NoMediaType = new MediaType("<none>", "<none>", Map())
-
-  val Extract = """^([^/]+)/([^\s;]+)[;]\s*(.*)$""".r
+  val Extract     = """^([^/]+)/([^\s;]+)[;]\s*(.*)$""".r
 
   private def mkPair(s: String) = s indexOf '=' match {
     case n if n >= 0 => (s take n, s drop n + 1)
     case _           => (s, "")
   }
+
   private def mkMap(attrs: String) = (attrs split ";" map mkPair).toMap
 
   def apply(str: String): MediaType = str match {

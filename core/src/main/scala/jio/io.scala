@@ -6,8 +6,7 @@ final case class ExecResult(
   stdout: Vector[String],
   stderr: Vector[String]
 ) {
-
-  def isEmpty = exitCode != 0
+  def isEmpty: Boolean                       = exitCode != 0
   def orElse(alt: => ExecResult): ExecResult = if (isEmpty) alt else this
 
   override def toString = s"""${ argv mkString " " } => $exitCode"""

@@ -1,8 +1,7 @@
 package sfs
 package fuse
 
-/** Cleaning up the javacentric fuse-jna types.
- */
+/** Cleaning up the java-centric fuse-jna types. */
 object Node {
   import net.fusejna.types.TypeMode.NodeType
   final val BlockDev = NodeType.BLOCK_DEVICE

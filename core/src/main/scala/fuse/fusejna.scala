@@ -3,23 +3,97 @@ package fuse
 
 import jio._, api._
 
-/** Forwarding filesystem which only passes through paths which match the filter.
- */
-class FilteredFs(val underlying: FuseFilesystem, cond: String => Boolean) extends ForwarderFs {
-  class Filter(filler: DirectoryFiller) extends DirectoryFiller {
-    def add(files: jIterable[String]): Boolean = filler add (files.asScala filter cond).asJava
-    def add(files: String*): Boolean           = filler add (files filter cond).asJava
+/** Widening access so we don't have to use inheritance everywhere. */
+trait FuseFs extends FuseFilesystem {
+  def unmountTry(): Unit = (
+    if (!isMounted)
+      ()
+    else if (isMac)
+      exec("umount", "-f", getMountPoint.getPath).orElse(exec("diskutil", "unmount", getMountPoint.getPath))
+    else
+      exec("fusermount", "-u", getMountPoint.getPath)
+    )
+
+  private def doMount(mountPoint: File, blocking: Boolean): this.type = {
+    addUnmountHook(this)
+    super.mount(mountPoint, blocking)
+    this
   }
-  override def readdir(path: String, df: DirectoryFiller): Int =
-    underlying.readdir(path, new Filter(df))
+
+  def fillDir(df: DirectoryFiller)(xs: Traversable[Any]): Unit = xs.foreach(x => df.add("" + x))
+
+  def mount(mountPoint: Path): this.type           = doMount(mountPoint.toFile, blocking = false)
+  def mountForeground(mountPoint: Path): this.type = doMount(mountPoint.toFile, blocking = true)
+
+  def fuseContext(): FuseContext  = super.getFuseContext
+  def getOptions(): Array[String] = options.toArray
+
+  def options: Vector[String] = fuse.defaultOptions
+  def getUID(): Long          = if (isMounted) fuseContext.uid.longValue else 0
+  def getGID(): Long          = if (isMounted) fuseContext.gid.longValue else 0
 }
 
-abstract class FuseFsFull extends net.fusejna.FuseFilesystem with FuseFs {
-  def logging(): this.type = doto[this.type](this)(_ log true)
+/** This makes it easy to modify or extends the behavior of an existing
+ *  filesystem instance by overriding a small handful of methods.
+ */
+abstract class ForwarderFs extends FuseFs {
+  protected def fs: FuseFilesystem
+
+  /** The non-path methods. */
+  def afterUnmount(mountPoint: File): Unit = fs.afterUnmount(mountPoint)
+  def beforeMount(mountPoint: File): Unit  = fs.beforeMount(mountPoint)
+  def destroy(): Unit                      = fs.destroy()
+  def getName(): String                    = getClass.shortName
+  def init(): Unit                         = fs.init()
+
+  /** Conceptually these are all instance methods of a path. */
+  def access(path: String, access: Int): Int                                                   = fs.access(path, access)
+  def bmap(path: String, info: FileInfo): Int                                                  = fs.bmap(path, info)
+  def chmod(path: String, mode: ModeInfo): Int                                                 = fs.chmod(path, mode)
+  def chown(path: String, uid: Long, gid: Long): Int                                           = fs.chown(path, uid, gid)
+  def create(path: String, mode: ModeInfo, info: FileInfo): Int                                = fs.create(path, mode, info)
+  def fgetattr(path: String, stat: StatInfo, info: FileInfo): Int                              = fs.fgetattr(path, stat, info)
+  def flush(path: String, info: FileInfo): Int                                                 = fs.flush(path, info)
+  def fsync(path: String, datasync: Int, info: FileInfo): Int                                  = fs.fsync(path, datasync, info)
+  def fsyncdir(path: String, datasync: Int, info: FileInfo): Int                               = fs.fsyncdir(path, datasync, info)
+  def ftruncate(path: String, offset: Long, info: FileInfo): Int                               = fs.ftruncate(path, offset, info)
+  def getattr(path: String, stat: StatInfo): Int                                               = fs.getattr(path, stat)
+  def getxattr(path: String, xattr: String, filler: XattrFiller, size: Long, pos: Long): Int   = fs.getxattr(path, xattr, filler, size, pos)
+  def link(path: String, target: String): Int                                                  = fs.link(path, target)
+  def listxattr(path: String, filler: XattrListFiller): Int                                    = fs.listxattr(path, filler)
+  def lock(path: String, info: FileInfo, command: FlockCommand, flock: FlockWrapper): Int      = fs.lock(path, info, command, flock)
+  def mkdir(path: String, mode: ModeInfo): Int                                                 = fs.mkdir(path, mode)
+  def mknod(path: String, mode: ModeInfo, dev: Long): Int                                      = fs.mknod(path, mode, dev)
+  def open(path: String, info: FileInfo): Int                                                  = fs.open(path, info)
+  def opendir(path: String, info: FileInfo): Int                                               = fs.opendir(path, info)
+  def read(path: String, buffer: Buf, size: Long, offset: Long, info: FileInfo): Int           = fs.read(path, buffer, size, offset, info)
+  def readdir(path: String, filler: DirectoryFiller): Int                                      = fs.readdir(path, filler)
+  def readlink(path: String, buffer: Buf, size: Long): Int                                     = fs.readlink(path, buffer, size)
+  def release(path: String, info: FileInfo): Int                                               = fs.release(path, info)
+  def releasedir(path: String, info: FileInfo): Int                                            = fs.releasedir(path, info)
+  def removexattr(path: String, xattr: String): Int                                            = fs.removexattr(path, xattr)
+  def rename(path: String, newName: String): Int                                               = fs.rename(path, newName)
+  def rmdir(path: String): Int                                                                 = fs.rmdir(path)
+  def setxattr(path: String, xattr: String, value: Buf, size: Long, flags: Int, pos: Int): Int = fs.setxattr(path, xattr, value, size, flags, pos)
+  def statfs(path: String, wrapper: StatvfsWrapper): Int                                       = fs.statfs(path, wrapper)
+  def symlink(path: String, target: String): Int                                               = fs.symlink(path, target)
+  def truncate(path: String, offset: Long): Int                                                = fs.truncate(path, offset)
+  def unlink(path: String): Int                                                                = fs.unlink(path)
+  def utimens(path: String, wrapper: TimeBufferWrapper): Int                                   = fs.utimens(path, wrapper)
+  def write(path: String, buf: Buf, bufSize: Long, writeOffset: Long, info: FileInfo): Int     = fs.write(path, buf, bufSize, writeOffset, info)
 }
 
-class RootedFsClass(val name: String, val root: Path, val fs: FuseCompatibleFs) extends RootedFs {
-  def getName = name
+/** Forwarding filesystem which only passes through paths which match the filter. */
+class FilteredFs(val fs: FuseFilesystem, cond: String => Boolean) extends ForwarderFs {
+  override def readdir(path: String, df: DirectoryFiller): Int = fs.readdir(path, new Filter(df))
+  class Filter(filler: DirectoryFiller) extends DirectoryFiller {
+    def add(files: jIterable[String]): Boolean = filler.add(files.asScala.filter(cond).asJava)
+    def add(files: String*): Boolean           = filler.add(files.filter(cond).asJava)
+  }
+}
+
+abstract class FuseFsFull extends FuseFs {
+  final def logging(): this.type = doto[this.type](this)(_.log(true)) // can't be trait
 }
 
 trait RootedFs extends FuseFsFull {
@@ -31,43 +105,37 @@ trait RootedFs extends FuseFsFull {
 
   protected def fuseContext: FuseContext
   protected def resolvePath(p: String): Path = path(s"$root$p")
-  protected def resolveFile(p: String): File = if (p == "/") rootFile else rootFile / (p stripPrefix "/")
+  protected def resolveFile(p: String): File = if (p == "/") rootFile else rootFile / p.stripPrefix("/")
 
   def read(path: String, buf: ByteBuffer, size: Long, offset: Long, info: FileInfo): Int = {
-    val key = fs resolve path
     for {
-      fs.File(data) <- fs lookup key
+      fs.File(data) <- fs.lookup(fs.resolve(path))
       totalBytes    =  if (offset + size > data.length) data.length - offset else size
       _             =  buf.put(data, offset.toInt, totalBytes.toInt)
     } yield totalBytes.toInt
   }.toInt
 
-  def write(path: String, buf: ByteBuffer, size: Long, offset: Long, info: FileInfo): Int = {
-    def impl(): Unit = {
+  def write(path: String, buf: ByteBuffer, size: Long, offset: Long, info: FileInfo): Int =
+    Try {
       val arr = new Array[Byte](size.toInt)
-      buf get arr
-      val f = resolveFile(path)
-      f appending (_ write arr)
-    }
-    Try(impl) fold (_ => -1, _ => size.toInt)
-  }
+      buf.get(arr)
+      resolveFile(path).appending(_.write(arr))
+    }.fold(_ => -1, _ => size.toInt)
 
   def lock(path: String, info: FileInfo, command: FlockCommand, flock: FlockWrapper): Int =
-    tryFuse { resolvePath(path).tryLock() }
+    tryFuse(resolvePath(path).tryLock())
 
   def readdir(path: String, filler: DirectoryFiller): Int = {
-    val key = fs resolve path
     for {
-      fs.Dir(children) <- fs lookup key ensure fs.isDir orElseUse empty[fs.Dir]
-      _                =  children.keys foreach (child => filler add (path + "/" + child))
+      fs.Dir(children) <- fs.lookup(fs.resolve(path)).ensure(fs.isDir).orElseUse(empty[fs.Dir])
+      _                =  children.keys.foreach(child => filler.add(s"$path/$child"))
     } yield eok
   }.toInt
 
   def readlink(path: String, buf: ByteBuffer, size: Long): Int = {
-    val key = fs resolve path
     for {
-      fs.Link(target) <- fs lookup key ensure fs.isLink orElse NotValid
-      _               =  buf put (target getBytes UTF8)
+      fs.Link(target) <- fs.lookup(fs.resolve(path)).ensure(fs.isLink).orElse(NotValid)
+      _               =  buf.put(target.getBytes(UTF8))
     } yield eok
   }.toInt
 
@@ -75,8 +143,8 @@ trait RootedFs extends FuseFsFull {
     import Node._
     val p = resolvePath(path)
     mode.`type`() match {
-      case Dir             => tryFuse(p mkdir mode.mode)
-      case File            => tryFuse(p mkfile mode.mode)
+      case Dir             => tryFuse(p.mkdir(mode.mode))
+      case File            => tryFuse(p.mkfile(mode.mode))
       case Fifo | Socket   => notSupported()
       case BlockDev | Link => notSupported()
     }
@@ -85,31 +153,31 @@ trait RootedFs extends FuseFsFull {
   def mkdir(path: String, mode: ModeInfo): Int =
     resolvePath(path) match {
       case f if f.nofollow.exists => alreadyExists()
-      case f                      => effect(eok)(f.mkdir(mode.mode))
+      case f                      => eok.side(f.mkdir(mode.mode))
     }
 
   def getattr(path: String, stat: StatInfo): Int = {
-    val key = fs resolve path
+    val key = fs.resolve(path)
     for {
-      metadata <- fs metadata key
+      metadata <- fs.metadata(key)
       _        <- populateStat(stat, metadata)
     } yield eok
   }.toInt
 
   def rename(from: String, to: String): Int =
-    tryFuse { resolvePath(from) moveTo resolvePath(to) }
+    tryFuse(resolvePath(from).moveTo(resolvePath(to)))
 
   def rmdir(path: String): Int =
     tryFuse {
       resolvePath(path) match {
-        case d if d.nofollow.isDirectory => effect(eok)(d.delete())
+        case d if d.nofollow.isDirectory => eok.side(d.delete())
         case _                           => doesNotExist()
       }
     }
 
   def unlink(path: String): Int =
     resolvePath(path) match {
-      case f if f.nofollow.exists => effect(eok)(f.delete())
+      case f if f.nofollow.exists => eok.side(f.delete())
       case _                      => doesNotExist()
     }
 
@@ -117,50 +185,47 @@ trait RootedFs extends FuseFsFull {
   // chmod calls to a link are applied to the link target.
   def chmod(path: String, mode: ModeInfo): Int =
     resolvePath(path) match {
-      case p if p.follow.exists => effect(eok)(p setPosixFilePermissions bitsAsPermissions(mode.mode))
+      case p if p.follow.exists => eok.side(p.setPosixFilePermissions(bitsAsPermissions(mode.mode)))
       case _                    => doesNotExist()
     }
 
   def symlink(target: String, linkName: String): Int =
-    tryFuse { resolvePath("/" + linkName) mklink path(target) }
+    tryFuse(resolvePath(s"/$linkName").mklink(path(target)))
 
-  def link(from: String, to: String): Int =
-    notSupported()
+  def link(from: String, to: String): Int = notSupported()
 
   def truncate(path: String, size: Long): Int =
-    tryFuse { effect(eok)(resolvePath(path) truncate size) }
+    tryFuse(eok.side(resolvePath(path).truncate(size)))
 
   def utimens(path: String, wrapper: TimeBufferWrapper) =
-    tryFuse(resolvePath(path) setLastModifiedTime FileTime.nanos(wrapper.mod_nsec))
+    tryFuse(resolvePath(path).setLastModifiedTime(FileTime.nanos(wrapper.mod_nsec)))
 
   protected def pathBytes(path: Path): Array[Byte] = path.readAllBytes
 
   private def populateStat(stat: StatInfo, metadata: api.Metadata): Result[Unit] = {
     import api.attributes._
-    for {
-      nodeType    <- metadata fold[NodeType] (ifValue = Success(_), orElse = DoesNotExist)
-    } yield {
-
+    for (nodeType <- metadata.fold[NodeType](Success(_), DoesNotExist)) yield {
       metadata foreach {
-        case Size(bytes)        => stat size   bytes
-        case Atime(timestamp)   => stat atime  timestamp.inSeconds
-        case Mtime(timestamp)   => stat mtime  timestamp.inSeconds
-        case BlockCount(amount) => stat blocks amount
-        case Uid(value)         => stat uid    value
-        case UnixPerms(mask)    => stat mode   (nodeType.asFuse.getBits | mask)
+        case Size(bytes)        => stat.size(bytes)
+        case Atime(timestamp)   => stat.atime(timestamp.inSeconds)
+        case Mtime(timestamp)   => stat.mtime(timestamp.inSeconds)
+        case BlockCount(amount) => stat.blocks(amount)
+        case Uid(value)         => stat.uid(value)
+        case UnixPerms(mask)    => stat.mode(nodeType.asFuse.getBits | mask)
       }
 
-      stat nlink  1
-      stat gid    getGID // XXX huge hassle.
+      stat.nlink(1)
+      stat.gid(getGID) // XXX huge hassle.
     }
   }
 
   // comments taken from https://www.cs.hmc.edu/~geoff/classes/hmc.cs135.201109/homework/fuse/fuse_doc.html#function-purposes
 
-  def afterUnmount(mountPoint: java.io.File): Unit = {}
-  def beforeMount(mountPoint: java.io.File): Unit = {}
+  def afterUnmount(mountPoint: File): Unit = ()
+  def beforeMount(mountPoint: File): Unit  = ()
+
   //  Called when the filesystem exits.
-  def destroy(): Unit = {}
+  def destroy(): Unit = ()
 
   //  This is the same as the access(2) system call. It returns -ENOENT if the path doesn't
   //  exist, -EACCESS if the requested permission isn't available, or 0 for success. Note that
@@ -253,84 +318,6 @@ trait RootedFs extends FuseFsFull {
   def statfs(path: String, statfs: StatvfsWrapper): Int = eok
 }
 
-
-/** Widening access so we don't have to use inheritance everywhere.
- */
-
-trait FuseFs extends FuseFilesystem {
-  def unmountTry(): Unit = (
-    if (!isMounted)
-      return
-    else if (isMac)
-      exec("umount", "-f", getMountPoint.getPath) orElse exec("diskutil", "unmount", getMountPoint.getPath)
-    else
-      exec("fusermount", "-u", getMountPoint.getPath)
-  )
-  private def doMount(mountPoint: File, blocking: Boolean): this.type = {
-    addUnmountHook(this)
-    super.mount(mountPoint, blocking)
-    this
-  }
-
-  def fillDir(df: DirectoryFiller)(xs: Traversable[Any]): Unit = xs foreach (df add "" + _)
-
-  def mount(mountPoint: Path): this.type           = doMount(mountPoint.toFile, blocking = false)
-  def mountForeground(mountPoint: Path): this.type = doMount(mountPoint.toFile, blocking = true)
-
-  def fuseContext(): FuseContext  = super.getFuseContext
-  def getOptions(): Array[String] = options.toArray
-
-  def options: Vector[String] = fuse.defaultOptions
-  def getUID(): Long = if (isMounted) fuseContext.uid.longValue else 0
-  def getGID(): Long = if (isMounted) fuseContext.gid.longValue else 0
-}
-
-/** This makes it easy to modify or extends the behavior of an existing
- *  filesystem instance by overriding a small handful of methods.
- */
-abstract class ForwarderFs extends FuseFs {
-  protected def underlying: FuseFilesystem
-
-  /** The non-path methods. */
-  def afterUnmount(mountPoint: File): Unit = underlying.afterUnmount(mountPoint)
-  def beforeMount(mountPoint: File): Unit  = underlying.beforeMount(mountPoint)
-  def destroy(): Unit                      = underlying.destroy()
-  def getName(): String                    = getClass.shortName
-  def init(): Unit                         = underlying.init()
-
-  /** Conceptually these are all instance methods of a path. */
-  def access(path: String, access: Int): Int                                                   = underlying.access(path, access)
-  def bmap(path: String, info: FileInfo): Int                                                  = underlying.bmap(path, info)
-  def chmod(path: String, mode: ModeInfo): Int                                                 = underlying.chmod(path, mode)
-  def chown(path: String, uid: Long, gid: Long): Int                                           = underlying.chown(path, uid, gid)
-  def create(path: String, mode: ModeInfo, info: FileInfo): Int                                = underlying.create(path, mode, info)
-  def fgetattr(path: String, stat: StatInfo, info: FileInfo): Int                              = underlying.fgetattr(path, stat, info)
-  def flush(path: String, info: FileInfo): Int                                                 = underlying.flush(path, info)
-  def fsync(path: String, datasync: Int, info: FileInfo): Int                                  = underlying.fsync(path, datasync, info)
-  def fsyncdir(path: String, datasync: Int, info: FileInfo): Int                               = underlying.fsyncdir(path, datasync, info)
-  def ftruncate(path: String, offset: Long, info: FileInfo): Int                               = underlying.ftruncate(path, offset, info)
-  def getattr(path: String, stat: StatInfo): Int                                               = underlying.getattr(path, stat)
-  def getxattr(path: String, xattr: String, filler: XattrFiller, size: Long, pos: Long): Int   = underlying.getxattr(path, xattr, filler, size, pos)
-  def link(path: String, target: String): Int                                                  = underlying.link(path, target)
-  def listxattr(path: String, filler: XattrListFiller): Int                                    = underlying.listxattr(path, filler)
-  def lock(path: String, info: FileInfo, command: FlockCommand, flock: FlockWrapper): Int      = underlying.lock(path, info, command, flock)
-  def mkdir(path: String, mode: ModeInfo): Int                                                 = underlying.mkdir(path, mode)
-  def mknod(path: String, mode: ModeInfo, dev: Long): Int                                      = underlying.mknod(path, mode, dev)
-  def open(path: String, info: FileInfo): Int                                                  = underlying.open(path, info)
-  def opendir(path: String, info: FileInfo): Int                                               = underlying.opendir(path, info)
-  def read(path: String, buffer: Buf, size: Long, offset: Long, info: FileInfo): Int           = underlying.read(path, buffer, size, offset, info)
-  def readdir(path: String, filler: DirectoryFiller): Int                                      = underlying.readdir(path, filler)
-  def readlink(path: String, buffer: Buf, size: Long): Int                                     = underlying.readlink(path, buffer, size)
-  def release(path: String, info: FileInfo): Int                                               = underlying.release(path, info)
-  def releasedir(path: String, info: FileInfo): Int                                            = underlying.releasedir(path, info)
-  def removexattr(path: String, xattr: String): Int                                            = underlying.removexattr(path, xattr)
-  def rename(path: String, newName: String): Int                                               = underlying.rename(path, newName)
-  def rmdir(path: String): Int                                                                 = underlying.rmdir(path)
-  def setxattr(path: String, xattr: String, value: Buf, size: Long, flags: Int, pos: Int): Int = underlying.setxattr(path, xattr, value, size, flags, pos)
-  def statfs(path: String, wrapper: StatvfsWrapper): Int                                       = underlying.statfs(path, wrapper)
-  def symlink(path: String, target: String): Int                                               = underlying.symlink(path, target)
-  def truncate(path: String, offset: Long): Int                                                = underlying.truncate(path, offset)
-  def unlink(path: String): Int                                                                = underlying.unlink(path)
-  def utimens(path: String, wrapper: TimeBufferWrapper): Int                                   = underlying.utimens(path, wrapper)
-  def write(path: String, buf: Buf, bufSize: Long, writeOffset: Long, info: FileInfo): Int     = underlying.write(path, buf, bufSize, writeOffset, info)
+class RootedFsClass(val name: String, val root: Path, val fs: FuseCompatibleFs) extends RootedFs {
+  def getName = name
 }

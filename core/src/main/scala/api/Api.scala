@@ -11,14 +11,21 @@ trait Api {
   type Try[+A]     = scala.util.Try[A]
   type uV          = scala.annotation.unchecked.uncheckedVariance
 
-  def unit = ()
+  type Bottom <: Nothing // better w/ inference
 
-  def classOf[A](implicit z: CTag[A]): Class[A] = classTag[A].runtimeClass.asInstanceOf[Class[A]]
-  def classTag[A](implicit z: CTag[A]): CTag[A] = z
+  val Try = scala.util.Try
 
-  def andTrue(x: Unit): Boolean         = true
-  def doto[A](x: A)(f: A => Unit): A    = { f(x) ; x }
-  def effect[A](x: A)(effects: Any*): A = x
-  def empty[A](implicit z: Empty[A]): A = z.emptyValue
-  def Try[A](body: => A): Try[A]        = scala.util.Try[A](body)
+  final def cast[A](x: Any): A                        = x.asInstanceOf[A] // risks casting to Nothing$
+  final def classOf[A](implicit z: CTag[A]): Class[A] = z.runtimeClass.asInstanceOf[Class[A]]
+  final def classTag[A](implicit z: CTag[A]): CTag[A] = z
+  final def const1[R, A](x: => A): R => A             = _ => x
+  final def constVal[R, A](x: A): R => A              = _ => x
+  final def const[R, A](x: => A): R => A              = { lazy val a = x; _ => a }
+  final def doto[A](x: A)(f: A => Unit): A            = { f(x) ; x }
+  final def empty[A](implicit z: Empty[A]): A         = z.emptyValue
+  final def idFun[A]: A => A                          = idFun1.asInstanceOf[A => A]
+  final def void[A]: A => Unit                        = voidFun1.asInstanceOf[A => Unit]
+
+  private val idFun1   = (x: Any) => x
+  private val voidFun1 = (_: Any) => ()
 }

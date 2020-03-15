@@ -7,7 +7,7 @@ import jnf.LinkOption.NOFOLLOW_LINKS
 import jnf.FileVisitOption.FOLLOW_LINKS
 import api._
 
-// LinkOption <: ( CopyOption, OpenOption )
+// LinkOption <: (CopyOption, OpenOption)
 //
 // Link options: NOFOLLOW_LINKS
 // Copy options: ATOMIC_MOVE, COPY_ATTRIBUTES, REPLACE_EXISTING
@@ -26,8 +26,8 @@ class JioFollow(path: Path) {
   def readAttributes[A <: BasicFileAttributes](`type`: Class[A]): A     = F.readAttributes(path, `type`)
   def setAttribute[A](attribute: String, value: A): Path                = F.setAttribute(path, attribute, value)
 
-  private def mustFollow[A](opts: Seq[A]): Seq[A]      = opts filterNot (_ == NOFOLLOW_LINKS)
-  private def mustFollowSet[A](opts: jSet[A]): jSet[A] = opts.asScala filterNot (_ == NOFOLLOW_LINKS) asJava
+  private def mustFollow[A](opts: Seq[A]): Seq[A]      = opts.filter(_ != NOFOLLOW_LINKS)
+  private def mustFollowSet[A](opts: jSet[A]): jSet[A] = opts.asScala.filter(_ != NOFOLLOW_LINKS).asJava
 
   def copy(target: Path, options: CopyOption*): Path                                           = F.copy(path, target, mustFollow(options): _*)
   def move(target: Path, options: CopyOption*): Path                                           = F.move(path, target, mustFollow(options): _*)
@@ -58,7 +58,7 @@ class JioNoFollow(path: Path) {
   def setAttribute[A](attribute: String, value: A): Path                = F.setAttribute(path, attribute, value, NOFOLLOW_LINKS)
 
   private def mustNotFollowSet[A <: OpenOption](opts: jSet[A]): jSet[_ <: OpenOption] =
-    if (opts contains NOFOLLOW_LINKS) opts else jSet(opts.asScala.toArray[OpenOption] :+ NOFOLLOW_LINKS: _*)
+    if (opts.contains(NOFOLLOW_LINKS)) opts else jSet(opts.asScala.toArray[OpenOption] :+ NOFOLLOW_LINKS: _*)
 
   def copy(target: Path, options: CopyOption*): Path                                           = F.copy(path, target, NOFOLLOW_LINKS +: options: _*)
   def move(target: Path, options: CopyOption*): Path                                           = F.move(path, target, NOFOLLOW_LINKS +: options: _*)

@@ -9,6 +9,9 @@ import api._, std._
 // https://github.com/SerCeMan/jnr-fuse#projects-using-jnr-fuse
 // https://github.com/puniverse/javafs
 // https://github.com/cryptomator/fuse-nio-adapter
+// https://gist.github.com/paulp/7505f35e03f5a822af48 paths.scala
+// https://gist.github.com/paulp/3ead92339c713e720827 JioPathOps
+// https://gist.github.com/paulp/68db1e85221dbdfce67f PathRep
 package object fuse {
   type DirectoryFiller   = net.fusejna.DirectoryFiller
   type FileInfo          = net.fusejna.StructFuseFileInfo.FileInfoWrapper

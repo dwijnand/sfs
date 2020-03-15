@@ -1,7 +1,7 @@
 package sfs
 package fuse
 
-import jio._, api._
+import jio._, api._, attributes._
 
 /** Widening access so we don't have to use inheritance everywhere. */
 trait FuseFs extends FuseFilesystem {
@@ -203,7 +203,6 @@ trait RootedFs extends FuseFsFull {
   protected def pathBytes(path: Path): Array[Byte] = path.readAllBytes
 
   private def populateStat(stat: StatInfo, metadata: api.Metadata): Result[Unit] = {
-    import api.attributes._
     for (nodeType <- metadata.fold[NodeType](Success(_), DoesNotExist)) yield {
       metadata foreach {
         case Size(bytes)        => stat.size(bytes)

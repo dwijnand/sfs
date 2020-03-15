@@ -15,7 +15,6 @@ package object fuse {
   type FuseFilesystem    = net.fusejna.FuseFilesystem
   type IModeInfo         = net.fusejna.types.TypeMode.IModeWrapper
   type ModeInfo          = net.fusejna.types.TypeMode.ModeWrapper
-  type NodeType          = net.fusejna.types.TypeMode.NodeType
   type OpenMode          = net.fusejna.StructFuseFileInfo.FileInfoWrapper.OpenMode
   type StatInfo          = net.fusejna.StructStat.StatWrapper
   type StatvfsWrapper    = net.fusejna.StructStatvfs.StatvfsWrapper
@@ -63,7 +62,7 @@ package object fuse {
     type IO   = Array[Byte]
   }
 
-  implicit class NodeTypeOps(val nodeType: attributes.NodeType) extends AnyVal {
+  implicit class NodeTypeOps(val nodeType: NodeType) extends AnyVal {
     def asFuse = nodeType match {
       case File => Node.File
       case Dir  => Node.Dir

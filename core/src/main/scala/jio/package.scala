@@ -37,12 +37,6 @@ package object jio extends DecorateAsScala with DecorateAsJava with Alias {
     def loan[B](f: A => B): B = try f(x) finally x.close()
   }
 
-  case class PosixFilePermissions(
-      groupRead: Boolean, groupWrite: Boolean, groupExecute: Boolean,
-      ownerRead: Boolean, ownerWrite: Boolean, ownerExecute: Boolean,
-      otherRead: Boolean, otherWrite: Boolean, otherExecute: Boolean
-  )
-
   implicit class FileOps(val f: File) extends Pathish[File] {
     def path: Path     = f.toPath
     def asRep(p: Path) = p.toFile

@@ -1,5 +1,5 @@
 package sfs
-package api
+package std
 
 trait ShowDirect extends Any {
   def to_s: String

@@ -1,6 +1,8 @@
 package sfs
 package api
 
+import std._
+
 trait Filesystem { fs =>
   /** Allows for effects */
   type M[_]

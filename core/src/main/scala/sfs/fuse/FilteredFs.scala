@@ -1,7 +1,7 @@
 package sfs
 package fuse
 
-import jio._
+import jio._, std._
 
 /** Forwarding filesystem which only passes through paths which match the filter. */
 class FilteredFs(val fs: FuseFilesystem, cond: String => Boolean) extends ForwarderFs {

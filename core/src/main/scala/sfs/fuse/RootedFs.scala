@@ -1,7 +1,7 @@
 package sfs
 package fuse
 
-import jio._, api._, Attributes._
+import api._, jio._, std._, Attributes._
 
 trait RootedFs extends FuseFsFull {
   def root: Path
@@ -14,7 +14,7 @@ trait RootedFs extends FuseFsFull {
   protected def resolvePath(p: String): Path = path(s"$root$p")
   protected def resolveFile(p: String): File = if (p == "/") rootFile else rootFile / p.stripPrefix("/")
 
-  def read(path: String, buf: ByteBuffer, size: Long, offset: Long, info: FileInfo): Int = {
+  def read(path: String, buf: Buf, size: Long, offset: Long, info: FileInfo): Int = {
     for {
       fs.File(data) <- fs.lookup(fs.resolve(path))
       totalBytes    =  if (offset + size > data.length) data.length - offset else size
@@ -22,7 +22,7 @@ trait RootedFs extends FuseFsFull {
     } yield totalBytes.toInt
   }.toInt
 
-  def write(path: String, buf: ByteBuffer, size: Long, offset: Long, info: FileInfo): Int =
+  def write(path: String, buf: Buf, size: Long, offset: Long, info: FileInfo): Int =
     Try {
       val arr = new Array[Byte](size.toInt)
       buf.get(arr)
@@ -39,7 +39,7 @@ trait RootedFs extends FuseFsFull {
     } yield eok
   }.toInt
 
-  def readlink(path: String, buf: ByteBuffer, size: Long): Int = {
+  def readlink(path: String, buf: Buf, size: Long): Int = {
     for {
       fs.Link(target) <- fs.lookup(fs.resolve(path)).ensure(fs.isLink).orElse(NotValid)
       _               =  buf.put(target.getBytes(UTF8))
@@ -213,7 +213,7 @@ trait RootedFs extends FuseFsFull {
   def removexattr(path: String, xattr: String): Int = notImplemented()
 
   //  Set an extended attribute. See setxattr(2). This should be implemented only if HAVE_SETXATTR is true.
-  def setxattr(path: String, xattr: String, buf: ByteBuffer, size: Long, flags: Int, position: Int): Int = notImplemented()
+  def setxattr(path: String, xattr: String, buf: Buf, size: Long, flags: Int, position: Int): Int = notImplemented()
 
   //  Return statistics about the filesystem. See statvfs(2) for a description of the structure contents.
   //  Usually, you can ignore the path. Not required, but handy for read/write filesystems since this is how

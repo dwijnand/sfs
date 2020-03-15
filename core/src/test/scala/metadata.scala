@@ -1,9 +1,13 @@
 package sfs
 package tests
 
-import org.junit._, Assert._
+import org.junit._
+import Assert._
+
 import scala.concurrent.duration._
-import api._, Attributes._
+import api._
+import Attributes._
+import sfs.std.{ Empty, FileTime }
 
 final class MetadataTests {
   implicit def emptyMtime: Empty[Mtime] = Empty(???)

@@ -1,7 +1,7 @@
 package sfs
 package jio
 
-import api._
+import std._
 
 trait JavaEffects {
   type M[_]

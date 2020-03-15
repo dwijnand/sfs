@@ -1,7 +1,7 @@
 package sfs
 package fuse
 
-import jio._
+import std._
 
 /** Reverses all the data on the filesystem. */
 object reversefs extends FsRunner {

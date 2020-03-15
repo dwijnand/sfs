@@ -1,5 +1,4 @@
-package sfs
-package api
+package sfs.std
 
 trait Empty[+A] {
   def emptyValue: A

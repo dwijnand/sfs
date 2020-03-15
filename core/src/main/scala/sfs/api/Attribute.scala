@@ -1,6 +1,8 @@
 package sfs
 package api
 
+import std._
+
 /** Attribute is a dependently typed key/value pair. */
 trait Attribute extends Any with ShowDirect {
   type Type

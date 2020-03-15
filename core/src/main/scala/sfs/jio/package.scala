@@ -9,9 +9,9 @@ import jnf.Files
 import jnfa.PosixFilePermission._
 import javax.naming.SizeLimitExceededException
 import scala.collection.convert.{ AsJavaExtensions, AsScalaExtensions, StreamExtensions }
-import api._
+import std._
 
-package object jio extends AsJavaExtensions with AsScalaExtensions with StreamExtensions with Alias {
+package object jio extends AsJavaExtensions with AsScalaExtensions with StreamExtensions {
   val UTF8          = java.nio.charset.StandardCharsets.UTF_8
   val UnixUserClass = Class.forName("sun.nio.fs.UnixUserPrincipals$User")
   val UidMethod     = UnixUserClass.getDeclaredMethod("uid").tap(_.setAccessible(true))
@@ -66,21 +66,6 @@ package object jio extends AsJavaExtensions with AsScalaExtensions with StreamEx
     def appendNullBytes(at: Long, amount: Int): Unit =
       c.write(ByteBuffer.wrap(Array.fill(amount)(0.toByte)), at)
   }
-
-  implicit class UnixPermsOps(val perms: UnixPerms) extends AnyVal {
-    def java: Set[PosixFilePermission] = perms.bits.map(UnixToJava)
-  }
-
-  def toUnixMask(perms: jFilePermissions): Long = perms.asScala.map(JavaToUnix).foldLeft(0L)(_ | _)
-
-  lazy val UnixToJava = UnixPerms.Bits.zip(JavaBits).toMap
-  lazy val JavaToUnix = JavaBits.zip(UnixPerms.Bits).toMap
-
-  lazy val JavaBits = Vector[PosixFilePermission](
-    OWNER_READ, OWNER_WRITE, OWNER_EXECUTE,
-    GROUP_READ, GROUP_WRITE, GROUP_EXECUTE,
-    OTHERS_READ, OTHERS_WRITE, OTHERS_EXECUTE,
-  )
 
   def bitsAsPermissions(bits: Long): jFilePermissions = {
     Set(

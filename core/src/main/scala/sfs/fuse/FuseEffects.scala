@@ -3,7 +3,7 @@ package fuse
 
 import java.nio.file._
 import javax.naming.SizeLimitExceededException
-import jio._
+import jio._, std._
 
 class FuseEffects extends JavaEffects {
   type M[A] = Result[A]
@@ -20,7 +20,7 @@ class FuseEffects extends JavaEffects {
       case _: DirectoryNotEmptyException    => NotEmpty
       case _: SizeLimitExceededException    => TooBig
       case _: AccessDeniedException         => AccessDenied
-      case _: jio.IOException               => InputOutputError
+      case _: IOException                   => InputOutputError
       case _                                => InputOutputError
     }
   }

@@ -1,5 +1,5 @@
 package sfs
-package api
+package std
 
 final case class ExecResult(
     argv: Vector[String],
@@ -10,5 +10,5 @@ final case class ExecResult(
   def isEmpty: Boolean                       = exitCode != 0
   def orElse(alt: => ExecResult): ExecResult = if (isEmpty) alt else this
 
-  override def toString = s"""${ argv mkString " " } => $exitCode"""
+  override def toString = s"${argv.mkString(" ")} => $exitCode"
 }

@@ -1,7 +1,7 @@
 package sfs
 package fuse
 
-import jio._, api._
+import jio._, std._
 
 /** Generic SFS runner. */
 abstract class FsRunner {

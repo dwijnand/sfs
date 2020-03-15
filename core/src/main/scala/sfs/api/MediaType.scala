@@ -1,6 +1,8 @@
 package sfs
 package api
 
+import std._
+
 // https://www.w3.org/Protocols/rfc2616/rfc2616-sec3.html#sec3.7
 //
 // media-type     = type "/" subtype *( ";" parameter )

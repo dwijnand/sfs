@@ -1,5 +1,5 @@
 package sfs
-package api
+package std
 
 trait ShowSelf extends Any with ShowDirect {
   override def toString = to_s

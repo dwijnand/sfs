@@ -1,7 +1,7 @@
 package sfs
 package fuse
 
-import jio._, api._
+import jio._, std._
 
 /** This makes it easy to modify or extends the behavior of an existing
  *  filesystem instance by overriding a small handful of methods.

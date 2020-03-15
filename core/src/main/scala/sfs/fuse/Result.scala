@@ -1,8 +1,8 @@
 package sfs
 package fuse
 
-import api._
 import net.fusejna.ErrorCodes._
+import std._
 
 sealed trait Result[+A] { r =>
   def fold[B](f: A => B, g: Error => B): B = r match { case Success(a) => f(a) case x: Error => g(x) }

@@ -1,5 +1,5 @@
 package sfs
-package api
+package std
 
 import java.nio.file.{ attribute => jnfa }
 import java.util.concurrent.TimeUnit

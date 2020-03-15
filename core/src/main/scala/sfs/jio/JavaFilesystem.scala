@@ -1,13 +1,13 @@
 package sfs
 package jio
 
-import api._
+import api._, std._
 
 class JavaFilesystem[E <: JavaEffects](root: Path, val effects: E) extends Filesystem {
   type M[A] = effects.M[A]
-  type Path = jio.Path
+  type Path = std.Path
   type Name = String
-  type Key  = jio.Path
+  type Key  = std.Path
   type IO   = Array[Byte]
 
   import effects._

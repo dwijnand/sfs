@@ -5,7 +5,7 @@ import java.nio.{ file => jnf }
 import jnf.{ attribute => jnfa }
 import jnf.{ Files => F }
 import jnfa.PosixFilePermissions.asFileAttribute
-import api._, Attributes._
+import api._, std._, Attributes._
 
 trait Pathish[Rep] extends Any {
   def path: Path
@@ -36,7 +36,7 @@ trait Pathish[Rep] extends Any {
   def moveTo(target: Path)    = path.nofollow.move(target)
 
   def metadata: Metadata = {
-    val metadata = Metadata(Atime(atime), Mtime(mtime), UnixPerms(toUnixMask(perms)), Uid(uid))
+    val metadata = Metadata(Atime(atime), Mtime(mtime), UnixPerms.fromJava(perms), Uid(uid))
          if (isFile) metadata.set(NodeType.File).set(Size(path.size)).set(BlockCount(blockCount))
     else if (isDir)  metadata.set(NodeType.Dir)
     else if (isLink) metadata.set(NodeType.Link)

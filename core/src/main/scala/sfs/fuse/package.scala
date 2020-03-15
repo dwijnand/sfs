@@ -3,7 +3,7 @@ package sfs
 import java.nio.file._
 import javax.naming.SizeLimitExceededException
 import net.fusejna.ErrorCodes._
-import api._
+import api._, std._
 
 package object fuse {
   type DirectoryFiller   = net.fusejna.DirectoryFiller
@@ -42,7 +42,7 @@ package object fuse {
       case _: DirectoryNotEmptyException    => -ENOTEMPTY
       case _: SizeLimitExceededException    => -EFBIG
       case _: AccessDeniedException         => -EACCES
-      case _: jio.IOException               => -EIO
+      case _: IOException                   => -EIO
       case _                                => -EIO
     }
   }

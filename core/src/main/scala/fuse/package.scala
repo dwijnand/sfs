@@ -24,7 +24,7 @@ package object fuse {
   type XattrFiller       = net.fusejna.XattrFiller
   type XattrListFiller   = net.fusejna.XattrListFiller
 
-  def tryFuse(body: => Unit): Int = Try(body).fold(_.toErrno, constVal(eok))
+  def tryFuse(body: => Unit): Int = Try(body).fold(_.toErrno, constV(eok))
 
   def alreadyExists()  = -EEXIST
   def doesNotExist()   = -ENOENT

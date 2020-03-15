@@ -44,7 +44,7 @@ trait Pathish[Rep] {
   }
 
   def /(name: String): Rep      = asRep(path.resolve(name))
-  def ls: Vector[Rep]           = if (isDir) F.list(path).loan(_.toVector.map(asRep)) else Vector()
+  def ls: Vector[Rep]           = if (isDir) Using.resource(F.list(path))(_.toVector.map(asRep)) else Vector()
   def mkdir(bits: Long): Rep    = asRep(path.createDirectory(asFileAttribute(bitsAsPermissions(bits))))
   def mkfile(bits: Long): Rep   = asRep(path.createFile(asFileAttribute(bitsAsPermissions(bits))))
   def mklink(target: Path): Rep = asRep(path.createSymbolicLink(target))

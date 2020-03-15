@@ -34,12 +34,8 @@ object MediaType {
   val NoMediaType = new MediaType("<none>", "<none>", Map())
   val Extract     = """^([^/]+)/([^\s;]+)[;]\s*(.*)$""".r
 
-  private def mkPair(s: String) = s indexOf '=' match {
-    case n if n >= 0 => (s take n, s drop n + 1)
-    case _           => (s, "")
-  }
-
-  private def mkMap(attrs: String) = (attrs split ";" map mkPair).toMap
+  private def mkPair(s: String)    = s.indexOf('=').pipe(n => if (n >= 0) (s.take(n), s.drop(n + 1)) else (s, ""))
+  private def mkMap(attrs: String) = attrs.split(";").map(mkPair).toMap
 
   def apply(str: String): MediaType = str match {
     case Extract(tpe, subtpe, attrs) => new MediaType(tpe, subtpe, mkMap(attrs))

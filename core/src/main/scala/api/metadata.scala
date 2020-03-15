@@ -80,7 +80,7 @@ final class Metadata(val attributes: Vector[Attribute]) extends ShowSelf { md =>
   def flatMap(f: Attribute => Metadata): Metadata    = transform(_.flatMap(f(_).attributes))
   def filter(p: Attribute => Boolean): Metadata      = transform(_.filter(p))
 
-  def mapOnly(pf: Attribute =?> Attribute): Metadata = map(x => pf.applyOrElse(x, constVal(x)))
+  def mapOnly(pf: Attribute =?> Attribute): Metadata = map(x => pf.applyOrElse(x, constV(x)))
 
   def to_s = if (isEmpty) "{ }" else attributes.mkString("{\n  ", "\n  ", "\n}")
 }

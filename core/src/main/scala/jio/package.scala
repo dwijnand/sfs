@@ -33,14 +33,10 @@ package object jio extends AsJavaExtensions with AsScalaExtensions with Alias {
     def shortName: String = c.getName.stripSuffix("$").split("[.]").last.split("[$]").last
   }
 
-  implicit class ResourceOps[A <: AutoCloseable](private val x: A) {
-    def loan[B](f: A => B): B = try f(x) finally x.close()
-  }
-
   implicit class FileOps(val f: File) extends Pathish[File] {
     def path: Path     = f.toPath
     def asRep(p: Path) = p.toFile
-    def appending[A](g: FileOutputStream => A): A = new FileOutputStream(f, true).loan(g)
+    def appending[A](g: FileOutputStream => A): A = Using.resource(new FileOutputStream(f, true))(g)
   }
 
   implicit class PathOps(val path: Path) extends Pathish[Path] {
@@ -67,7 +63,7 @@ package object jio extends AsJavaExtensions with AsScalaExtensions with Alias {
       }
 
     private def withWriteChannel[A](code: FileChannel => A): A =
-      jnc.FileChannel.open(path, jnf.StandardOpenOption.WRITE).loan(code)
+      Using.resource(jnc.FileChannel.open(path, jnf.StandardOpenOption.WRITE))(code)
   }
 
   implicit class FileChannelOps(val c: FileChannel) extends AnyVal {

@@ -8,9 +8,9 @@ sealed trait Result[+A] { r =>
   def fold[B](f: A => B, g: Error => B): B = r match { case Success(a) => f(a) case x: Error => g(x) }
 
   def flatMap[B](f: A => Result[B]): Result[B]   = fold(f, idFun)
-  def withFilter(f: A => Boolean): Result[A]     = fold(a => if (f(a)) r else InputOutputError, constVal(InputOutputError))
-  def ifGood[T >: A](z: => Result[T]): Result[T] = fold(const1(z), constVal(r))
-  def orElse[T >: A](z: => Result[T]): Result[T] = fold(constVal(r), const1(z))
+  def withFilter(f: A => Boolean): Result[A]     = fold(a => if (f(a)) r else InputOutputError, constV(InputOutputError))
+  def ifGood[T >: A](z: => Result[T]): Result[T] = fold(const1(z), constV(r))
+  def orElse[T >: A](z: => Result[T]): Result[T] = fold(constV(r), const1(z))
   def toInt()(implicit ev: A => Int): Int        = fold(ev, _.toErrorCode)
 
   def map[B](f: A => B): Result[B]               = flatMap(a => Success(f(a)))
